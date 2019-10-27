@@ -1,0 +1,26 @@
+{
+  "name": "postman-aws_lambda",
+  "version": "1.0.0",
+  "description": "A lambda to export extra metrics for RDS",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rohit-smpx/postman-aws_lambda.git"
+  },
+  "keywords": [
+    "aws",
+    "lambda",
+    "rds",
+    "metrics",
+    "monitoring"
+  ],
+  "author": "Rohit Gohri <gohri.rohit@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rohit-smpx/postman-aws_lambda/issues"
+  },
+  "homepage": "https://github.com/rohit-smpx/postman-aws_lambda#readme"
+}
