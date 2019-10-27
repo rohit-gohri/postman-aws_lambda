@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "10000:8080"
+    logging:
+      driver: "none"

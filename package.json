@@ -4,7 +4,11 @@
   "description": "A lambda to export extra metrics for RDS",
   "main": "dist/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "babel-changed",
+    "start": "node dist/index.js",
+    "type-check": "tsc -p jsconfig.json",
+    "lint": "eslint src test",
+    "lint:fix": "eslint --fix src test"
   },
   "repository": {
     "type": "git",
@@ -22,5 +26,42 @@
   "bugs": {
     "url": "https://github.com/rohit-smpx/postman-aws_lambda/issues"
   },
-  "homepage": "https://github.com/rohit-smpx/postman-aws_lambda#readme"
+  "homepage": "https://github.com/rohit-smpx/postman-aws_lambda#readme",
+  "devDependencies": {
+    "@babel/cli": "^7.6.0",
+    "@babel/core": "^7.6.0",
+    "@babel/plugin-proposal-class-properties": "^7.5.5",
+    "@babel/preset-env": "^7.6.0",
+    "@babel/register": "^7.6.0",
+    "@smpx/babel-changed": "^0.2.2",
+    "eslint": "^6.3.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.18.2",
+    "source-map-support": "^0.5.13",
+    "typescript": "^3.6.3"
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "targets": {
+            "node": "current"
+          },
+          "modules": "commonjs",
+          "shippedProposals": true
+        }
+      ]
+    ],
+    "plugins": [
+      "@babel/plugin-proposal-class-properties"
+    ]
+  },
+  "dependencies": {
+    "@smpx/cfg": "^1.2.1",
+    "aws-lambda": "^0.1.2",
+    "got": "^9.6.0",
+    "knex": "^0.19.5",
+    "mysql": "^2.17.1",
+  }
 }
