@@ -20,15 +20,14 @@ exports.handler = async (event, context) => {
     console.error('Could not get metrics from even one host, exiting.');
     return;
   }
-  console.log(JSON.stringify(metrics, null, 4));
 
   await putMetrics(metrics);
 };
 
-exports.handler().then(() => {
-  console.log('success');
-  process.exit(0);
-}).catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// exports.handler().then(() => {
+//   console.log('success');
+//   process.exit(0);
+// }).catch((err) => {
+//   console.error(err);
+//   process.exit(1);
+// });
