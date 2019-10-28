@@ -24,6 +24,8 @@ async function getDBs(connection) {
    *  COLUMN_NAME: string;
    *  DATA_TYPE: string;
    *  COLUMN_TYPE: string;
+   *  AUTO_INCREMENT: bigint;
+   *  TABLE_ROWS: number;
    * }} ColumnDetails
    */
 
@@ -72,79 +74,37 @@ function getMaxValue(column) {
    * @typedef {ColumnDetails & {
    *  MAX_VAL: bigint;
    *  PERCENTAGE?: number;
-   *  AUTO_INCREMENT?: bigint
    * }} ColumnDetailsExt
    */
 
+
 /**
    * @param {knex | null} connection
    */
-async function getTableMapForAutoIncrementColumns(connection) {
-  if (!connection) return {};
+async function getColumnsWithAutoIncrementValues(connection) {
+  if (!connection) return [];
 
   /** @type {ColumnDetails[]} */
   const columns = await connection.queryBuilder()
-    .table('INFORMATION_SCHEMA.COLUMNS')
-    .whereRaw('?? LIKE ?', ['EXTRA', '%auto_increment%'])
-    .select('TABLE_SCHEMA', 'TABLE_NAME', 'COLUMN_NAME', 'DATA_TYPE', 'COLUMN_TYPE');
-
-  /**
-     * @type {{
-     *  [db: string]: {
-     *      [table: string]: ColumnDetailsEx
-     * }}}
-     */
-  const tableMap = {};
-
-  columns.forEach((column) => {
-    tableMap[column.TABLE_SCHEMA] = tableMap[column.TABLE_SCHEMA] || {};
-    tableMap[column.TABLE_SCHEMA][column.TABLE_NAME] = {
-      ...column,
-      MAX_VAL: getMaxValue(column),
-    };
-  });
-
-  return tableMap;
-}
-
-/**
-   * @typedef {{
-   *  AUTO_INCREMENT: bigint;
-   *  TABLE_NAME: string;
-   *  TABLE_SCHEMA: string;
-   *  TABLE_ROWS: number;
-   * }} TableDetails
-   */
-
-/**
-   * @param {knex | null} connection
-   */
-async function getTableMapForAutoIncrementValues(connection) {
-  if (!connection) return {};
-
-  /** @type {TableDetails[]} */
-  const tables = await connection.queryBuilder()
     .table('INFORMATION_SCHEMA.TABLES')
-    .whereNotNull('AUTO_INCREMENT')
-    .select('AUTO_INCREMENT', 'TABLE_NAME', 'TABLE_SCHEMA', 'TABLE_ROWS');
+    .join('INFORMATION_SCHEMA.COLUMNS', (q) => {
+      q.on('TABLES.TABLE_SCHEMA', 'COLUMNS.TABLE_SCHEMA')
+      .andOn('TABLES.TABLE_NAME', 'COLUMNS.TABLE_NAME')
+    })
+    .whereRaw('?? LIKE ?', ['COLUMNS.EXTRA', '%auto_increment%'])
+    .whereNotNull('TABLES.AUTO_INCREMENT')
+    .select(
+      'TABLES.AUTO_INCREMENT', 'TABLES.TABLE_NAME', 'TABLES.TABLE_SCHEMA', 'TABLES.TABLE_ROWS',
+      'COLUMNS.COLUMN_NAME', 'COLUMNS.DATA_TYPE', 'COLUMNS.COLUMN_TYPE',
+    );
 
-  /**
-     * @type {{
-     *  [db: string]: {
-     *      [table: string]: TableDetails
-     * }}}
-     */
-  const tableMap = {};
-
-  tables.forEach((table) => {
-    tableMap[table.TABLE_SCHEMA] = tableMap[table.TABLE_SCHEMA] || {};
-    tableMap[table.TABLE_SCHEMA][table.TABLE_NAME] = {
-      ...table,
-      AUTO_INCREMENT: BigInt(table.AUTO_INCREMENT),
+  return columns.map(c => {
+    return {
+      ...c,
+      AUTO_INCREMENT: BigInt(c.AUTO_INCREMENT),
+      MAX_VAL: getMaxValue(c),
     };
   });
-
-  return tableMap;
 }
 
 /**
@@ -183,11 +143,8 @@ export default async function getMetrics(hosts) {
   connections = successConnections.map((details) => details.connection);
   const connectedHosts = successConnections.map((details) => details.host);
 
-  const columnMaps = await Promise.all(connections
-    .map(getTableMapForAutoIncrementColumns));
-
-  const tableMaps = await Promise.all(connections
-    .map(getTableMapForAutoIncrementValues));
+  const columnsPerHost = await Promise.all(connections
+    .map(getColumnsWithAutoIncrementValues));
 
   const metricsPerHost = connectedHosts.map((host) => ({
     host,
@@ -195,24 +152,13 @@ export default async function getMetrics(hosts) {
     metrics: [],
   }));
 
-  //  TODO: Use join query instead
-  tableMaps.forEach((tableMap, index) => {
-    const columnMap = columnMaps[index];
+  columnsPerHost.forEach((columns, index) => {
+    columns.forEach((columnDetails) => {
+      columnDetails.PERCENTAGE = Number(columnDetails.AUTO_INCREMENT * 10000n / columnDetails.MAX_VAL) / 100;
 
-    Object.keys(tableMap).forEach((db) => {
-      const tableDetailMap = tableMap[db];
-      Object.keys(tableDetailMap).forEach((table) => {
-        /** @type {ColumnDetailsExt} */
-        const columnDetails = columnMap[db] && columnMap[db][table];
-        /** @type {TableDetails} */
-        const tableDetails = tableDetailMap[table];
-        columnDetails.AUTO_INCREMENT = tableDetails.AUTO_INCREMENT;
-        columnDetails.PERCENTAGE = Number(tableDetails.AUTO_INCREMENT * 10000n / columnDetails.MAX_VAL) / 100;
-
-        metricsPerHost[index].metrics.push(columnDetails);
-      });
+      metricsPerHost[index].metrics.push(columnDetails);
     });
-
+ 
     metricsPerHost[index].metrics.sort((a, b) => b.PERCENTAGE - a.PERCENTAGE);
   });
 
