@@ -89,6 +89,11 @@ export async function getColumnsWithAutoIncrementValues(connection) {
   }));
 }
 
+/**
+ *
+ * @param {import('knex')[]} connections
+ * @param {{connection: import('knex'), host: string}[]} connectedHosts
+ */
 export default async function getAutoIncrementMetrics(connections, connectedHosts) {
   const columnsPerHost = await Promise.all(connections
     .map(getColumnsWithAutoIncrementValues));

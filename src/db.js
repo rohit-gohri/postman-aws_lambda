@@ -2,6 +2,7 @@
 import cfg from '@smpx/cfg';
 import knex from 'knex';
 import getAutoIncrementMetrics from './autoIncrement';
+import getDaysTillFullMetrics from './diskFull';
 
 // eslint-disable-next-line no-extend-native
 BigInt.prototype.toJSON = function () { return this.toString(); };
@@ -55,5 +56,11 @@ export default async function getMetrics(hosts) {
   connections = successConnections.map((details) => details.connection);
   const connectedHosts = successConnections.map((details) => details.host);
 
-  return getAutoIncrementMetrics(connections, connectedHosts);
+  const changeInDisk = await getDaysTillFullMetrics(connections, connectedHosts);
+  const autoIncrement = await getAutoIncrementMetrics(connections, connectedHosts);
+
+  return autoIncrement.map((a, index) => ({
+    ...a,
+    change: changeInDisk[index],
+  }));
 }
