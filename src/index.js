@@ -7,7 +7,7 @@ import putMetrics from './cloudWatch';
  * @param {import('aws-lambda').Context} context
  */
 exports.handler = async (event, context) => {
-  const hosts = cfg('hosts', []);
+  const hosts = cfg('hosts', []).filter(Boolean);
 
   if (!hosts.length) {
     console.log('No hosts found, exiting.');
