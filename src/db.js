@@ -117,19 +117,20 @@ async function getTableMapForAutoIncrementValues(connection) {
  * @param {string[]} hosts
  */
 export default async function getMetrics(hosts) {
-  let connections = hosts.map((host) => {
+  let connections = await Promise.all(hosts.map(async (host) => {
     const connectionSetting = { ...cfg('db'), host };
     try {
       const connection = knex({
         connection: connectionSetting,
         client: 'mysql',
       });
+      await connection.raw('select 1 as dbIsUp');
       return connection;
     } catch (err) {
       console.error(`Could not connect to host: ${host}`, err);
       return null;
     }
-  });
+  }));
 
   const successConnections = connections.map((connection, index) => ({
     connection,
