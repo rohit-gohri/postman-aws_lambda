@@ -5,5 +5,7 @@ module.exports = {
         port: 3306,
         user: 'admin',
         password: 'password',
+        supportBigNumbers: true,
+        bigNumberStrings: true,
     },
 };

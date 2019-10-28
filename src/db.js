@@ -1,5 +1,8 @@
+/* global BigInt */
 import cfg from '@smpx/cfg';
 import knex from 'knex';
+
+BigInt.prototype.toJSON = function() { return this.toString(); }
 
 const BLACKLIST_DBS = [
   'information_schema',
@@ -25,23 +28,51 @@ async function getDBs(connection) {
    */
 
 /**
-   *
-   * @param {ColumnDetails} column
-   */
+ *
+ * @param {ColumnDetails} column
+ */
 function getMaxValue(column) {
-  if (column.DATA_TYPE === 'int') {
-    if (column.COLUMN_TYPE.includes('unsigned')) {
-      return 1000;
+  const dataType = column.DATA_TYPE.toUpperCase();
+  const columnType = column.COLUMN_TYPE.toLowerCase();
+  if (dataType === 'TINYINT') {
+    if (columnType.includes('unsigned')) {
+      return BigInt(255);
     }
-    return 1000;
+    return BigInt(127);
   }
-  return 1000;
+  if (dataType === 'SMALLINT') {
+    if (columnType.includes('unsigned')) {
+      return BigInt(65535);
+    }
+    return BigInt(32767);
+  }
+  if (dataType === 'MEDIUMINT') {
+    if (columnType.includes('unsigned')) {
+      return BigInt(16777215);
+    }
+    return BigInt(8388607);
+  }
+  if (dataType === 'INT') {
+    if (columnType.includes('unsigned')) {
+      return 4294967295n;
+    }
+    return 2147483647n;
+  }
+  if (dataType === 'BIGINT') {
+    if (columnType.includes('unsigned')) {
+      return (2n ** 64n) - 1n;
+    }
+    return (2n ** 63n) - 1n;
+  }
+  console.error(`Invalid data type: ${dataType} (${columnType})`);
+  return 2147483647n;
 }
 
 /**
    * @typedef {ColumnDetails & {
-   *  MAX_VAL: number;
+   *  MAX_VAL: bigint;
    *  PERCENTAGE?: number;
+   *  AUTO_INCREMENT?: bigint
    * }} ColumnDetailsExt
    */
 
@@ -78,7 +109,7 @@ async function getTableMapForAutoIncrementColumns(connection) {
 
 /**
    * @typedef {{
-   *  AUTO_INCREMENT: number;
+   *  AUTO_INCREMENT: bigint;
    *  TABLE_NAME: string;
    *  TABLE_SCHEMA: string;
    *  TABLE_ROWS: number;
@@ -107,7 +138,10 @@ async function getTableMapForAutoIncrementValues(connection) {
 
   tables.forEach((table) => {
     tableMap[table.TABLE_SCHEMA] = tableMap[table.TABLE_SCHEMA] || {};
-    tableMap[table.TABLE_SCHEMA][table.TABLE_NAME] = table;
+    tableMap[table.TABLE_SCHEMA][table.TABLE_NAME] = {
+      ...table,
+      AUTO_INCREMENT: BigInt(table.AUTO_INCREMENT),
+    };
   });
 
   return tableMap;
@@ -172,8 +206,8 @@ export default async function getMetrics(hosts) {
         const columnDetails = columnMap[db] && columnMap[db][table];
         /** @type {TableDetails} */
         const tableDetails = tableDetailMap[table];
-
-        columnDetails.PERCENTAGE = (tableDetails.AUTO_INCREMENT / columnDetails.MAX_VAL) * 100;
+        columnDetails.AUTO_INCREMENT = tableDetails.AUTO_INCREMENT;
+        columnDetails.PERCENTAGE = Number(tableDetails.AUTO_INCREMENT * 10000n / columnDetails.MAX_VAL) / 100;
 
         metricsPerHost[index].metrics.push(columnDetails);
       });
