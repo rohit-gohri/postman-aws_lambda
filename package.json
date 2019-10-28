@@ -7,7 +7,7 @@
     "build": "babel-changed",
     "start": "node dist/index.js",
     "type-check": "tsc -p jsconfig.json",
-    "zip": "yarn && yarn build && zip -r -u function.zip .",
+    "zip": "yarn && yarn build && yarn install --production && zip -r -u function.zip .",
     "lint": "eslint src",
     "lint:fix": "yarn lint --fix"
   },
