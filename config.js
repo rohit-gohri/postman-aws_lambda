@@ -8,4 +8,10 @@ module.exports = {
         supportBigNumbers: true,
         bigNumberStrings: true,
     },
+
+    // cloudWatch: {
+    //     accessKeyId: 'key',
+    //     secretAccessKey: 'secret',
+    //     region: 'ap-south-1',
+    // },
 };
