@@ -46,9 +46,11 @@ function getMaxValue(column) {
    */
 
 /**
-   * @param {knex} connection
+   * @param {knex | null} connection
    */
 async function getTableMapForAutoIncrementColumns(connection) {
+  if (!connection) return {};
+
   /** @type {ColumnDetails[]} */
   const columns = await connection.queryBuilder()
     .table('INFORMATION_SCHEMA.COLUMNS')
@@ -84,9 +86,11 @@ async function getTableMapForAutoIncrementColumns(connection) {
    */
 
 /**
-   * @param {knex} connection
+   * @param {knex | null} connection
    */
 async function getTableMapForAutoIncrementValues(connection) {
+  if (!connection) return {};
+
   /** @type {TableDetails[]} */
   const tables = await connection.queryBuilder()
     .table('INFORMATION_SCHEMA.TABLES')
@@ -113,15 +117,36 @@ async function getTableMapForAutoIncrementValues(connection) {
  * @param {string[]} hosts
  */
 export default async function getMetrics(hosts) {
-  const connections = hosts.map((host) => {
-    const connection = { ...cfg('db'), host };
-    return knex({
-      connection,
-      client: 'mysql',
-    });
+  let connections = hosts.map((host) => {
+    const connectionSetting = { ...cfg('db'), host };
+    try {
+      const connection = knex({
+        connection: connectionSetting,
+        client: 'mysql',
+      });
+      return connection;
+    } catch (err) {
+      console.error(`Could not connect to host: ${host}`, err);
+      return null;
+    }
   });
 
-  console.log(`Connected to ${connections.length} host(s)!`);
+  const successConnections = connections.map((connection, index) => ({
+    connection,
+    host: hosts[index],
+  })).filter((details) => Boolean(details.connection));
+
+  if (successConnections.length < hosts.length) {
+    console.error(`Failed to connect to ${hosts.length - successConnections.length} hosts.`);
+    if (!successConnections.length) {
+      console.error('Could not connect to even one host.');
+      return [];
+    }
+  }
+  console.log(`Connected to ${successConnections.length} host(s)!`);
+
+  connections = successConnections.map((details) => details.connection);
+  const connectedHosts = successConnections.map((details) => details.host);
 
   const columnMaps = await Promise.all(connections
     .map(getTableMapForAutoIncrementColumns));
@@ -129,7 +154,7 @@ export default async function getMetrics(hosts) {
   const tableMaps = await Promise.all(connections
     .map(getTableMapForAutoIncrementValues));
 
-  const metricsPerHost = hosts.map((host) => ({
+  const metricsPerHost = connectedHosts.map((host) => ({
     host,
     /** @type {ColumnDetailsExt[]} */
     metrics: [],

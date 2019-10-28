@@ -8,8 +8,20 @@ import putMetrics from './cloudWatch';
  */
 exports.handler = async (event, context) => {
   const hosts = cfg('hosts', []);
+
+  if (!hosts.length) {
+    console.log('No hosts found, exiting.');
+    return;
+  }
+
   const metrics = await getMetrics(hosts);
+
+  if (!metrics.length) {
+    console.error('Could not get metrics from even one host, exiting.');
+    return;
+  }
   console.log(JSON.stringify(metrics, null, 4));
+
   await putMetrics(metrics);
 };
 

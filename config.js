@@ -1,5 +1,5 @@
 module.exports = {
-    hosts: ['db.region.rds.amazonaws.com'],
+    hosts: [],
 
     db: {
         port: 3306,
