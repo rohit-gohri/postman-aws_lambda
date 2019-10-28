@@ -129,8 +129,11 @@ export default async function getMetrics(hosts) {
   const tableMaps = await Promise.all(connections
     .map(getTableMapForAutoIncrementValues));
 
-  /** @type {ColumnDetailsExt[]} */
-  const metrics = [];
+  const metricsPerHost = hosts.map((host) => ({
+    host,
+    /** @type {ColumnDetailsExt[]} */
+    metrics: [],
+  }));
 
   //  TODO: Use join query instead
   tableMaps.forEach((tableMap, index) => {
@@ -146,12 +149,12 @@ export default async function getMetrics(hosts) {
 
         columnDetails.PERCENTAGE = (tableDetails.AUTO_INCREMENT / columnDetails.MAX_VAL) * 100;
 
-        metrics.push(columnDetails);
+        metricsPerHost[index].metrics.push(columnDetails);
       });
     });
+
+    metricsPerHost[index].metrics.sort((a, b) => b.PERCENTAGE - a.PERCENTAGE);
   });
 
-  metrics.sort((a, b) => b.PERCENTAGE - a.PERCENTAGE);
-
-  return metrics;
+  return metricsPerHost;
 }
